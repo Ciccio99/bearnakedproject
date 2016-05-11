@@ -33,7 +33,7 @@ ui <- shinyUI(fluidPage(
     sidebarLayout(
         sidebarPanel(
             fileInput("file", "Choose FASTA file", accept=c('.fasta')),
-            selectInput("seqtype", 
+            selectInput("seqType", 
 					    label=h5("What is the sequence type of this file?"), 
                         choices = list("DNA" = 1, 
                                        "RNA" = 2, 
@@ -48,10 +48,8 @@ ui <- shinyUI(fluidPage(
             h4("To get started, choose a fasta file on the left."),
             uiOutput("fileTab"),
             uiOutput("sum"),
-			uiOutput("DNAtext"),
-            plotOutput("distPlot"),
-			uiOutput("RNAtext"),
-			plotOutput("convertDNA_RNA")
+			uiOutput("seqText"),
+            plotOutput("plotMM")
         )
     )
 ))
@@ -84,36 +82,20 @@ server <- shinyServer(function(input, output) {
         summary(fasta())
     })
 	
-	##print RNA sequences
-	output$DNAtext <- renderText({
+	##print DNA, RNA, or protein sequences
+	output$seqText <- renderText({
 		
 		if(is.null(fasta()) == F){
 			
-			f <- fasta()[[1]][1:length(fasta()[[1]])]
-			x <- paste(f, collapse = "")
-			dna <- DNAString(x)
-			dnaBases <- strsplit(as.character(dna), split = "")[[1]]
-			paste(dnaBases)
-		}
-	})
-	
-	##generate a bar plot of the DNA sequences
-    output$distPlot <- renderPlot({
-        if(is.null(fasta()) == F){
-           
-	        f <- fasta()[[1]][1:length(fasta()[[1]])]
-			x <- paste(f, collapse = "")
-			dna <- DNAString(x)
-			dnaBases <- strsplit(as.character(dna), split = "")[[1]]
-			
-	        barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA Composition of each nucleotide" )
-		}
-    })
-
-	##print RNA sequences
-	output$RNAtext <- renderText({
-			
-			if(is.null(fasta()) == F){
+			if(input$seqType == 1){ ##DNA
+				
+				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				x <- paste(f, collapse = "")
+				dna <- DNAString(x)
+				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+				paste(dnaBases)
+				
+			} else if(input$seqType == 2){ ##RNA
 				
 				f <- fasta()[[1]][1:length(fasta()[[1]])]
 				x <- paste(f, collapse = "")
@@ -122,20 +104,42 @@ server <- shinyServer(function(input, output) {
 				rna <- RNAString(dna)
 				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
 				paste(rnaBases)
+				
+			} else if(input$seqType == 3){ ##protein
+				
+				
 			}
-		})
+		}
+	})
 	
-	##generate a bar plot of the RNA sequences
-	output$convertDNA_RNA <- renderPlot({
-			if(is.null(fasta()) == F){
+	##generate a bar plot of the DNA, RNA, or protein sequences
+    output$plotMM <- renderPlot({
+        if(is.null(fasta()) == F){
+           
+			if(input$seqType == 1){ ##DNA
+				
+		        f <- fasta()[[1]][1:length(fasta()[[1]])]
+				x <- paste(f, collapse = "")
+				dna <- DNAString(x)
+				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+		        barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA composition of each nucleotide" )
+				
+			} else if(input$seqType == 2){ ##RNA
+				
 				f <- fasta()[[1]][1:length(fasta()[[1]])]
 				x <- paste(f, collapse = "")
 				dna <- DNAString(x)
 				rna <- RNAString(dna)
 				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
-				barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA Composition of each nucleotide" )
+				barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
+				
+			} else if(input$seqType == 3){ ##protein
+				
+				
 			}
-	})
+		}
+    })
+
 })
 
 # Run the application 
