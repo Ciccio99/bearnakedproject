@@ -7,8 +7,22 @@
 #    http://shiny.rstudio.com/
 #
 
+if(require("Biobase") == FALSE){
+	source("https://bioconductor.org/biocLite.R")
+	
+	biocLite("Biobase")
+}
+
+if(require("Biostrings") == FALSE){
+	source("https://bioconductor.org/biocLite.R")
+	
+	biocLite("Biostrings")
+}
+
 library(shiny)
 library(seqinr)
+library(Biobase)
+library(Biostrings)
 
 # Define UI for application that draws a histogram
 ui <- shinyUI(fluidPage(
@@ -20,11 +34,11 @@ ui <- shinyUI(fluidPage(
         sidebarPanel(
             fileInput("file", "Choose FASTA file", accept=c('.fasta')),
             selectInput("seqtype", 
-                        label=h5("What would you like to plot?"), 
+					    label=h5("What is the sequence type of this file?"), 
                         choices = list("DNA" = 1, 
                                        "RNA" = 2, 
-                                       "Protein" = 3),
-                        selected = 3),
+                                       "Protein" = 3),),
+					   
             helpText("You may not select DNA or RNA if the fasta file
                      contains a peptide sequence.")
         ),
@@ -34,13 +48,18 @@ ui <- shinyUI(fluidPage(
             h4("To get started, choose a fasta file on the left."),
             uiOutput("fileTab"),
             uiOutput("sum"),
-            plotOutput("distPlot")
+			uiOutput("DNAtext"),
+            plotOutput("distPlot"),
+			uiOutput("RNAtext"),
+			plotOutput("convertDNA_RNA")
         )
     )
 ))
 
 # Define server logic required to draw a histogram
 server <- shinyServer(function(input, output) {
+	
+	##read in FASTA file
     fasta <- reactive({
         inFile <- input$file
         if(is.null(inFile)){
@@ -48,25 +67,75 @@ server <- shinyServer(function(input, output) {
         }
         read.fasta(file = inFile$datapath)
     })
+
+	##check to see if anything is in the file -- do not think this is necessary?
     output$fileTab <- renderTable({
         if(is.null(fasta())){
-            return ()
+           return()
         }
         input$file
     })
+	
+	##generates a summary of the file
     output$sum <- renderTable({
         if(is.null(fasta())){
             return ()
         }
         summary(fasta())
     })
+	
+	##print RNA sequences
+	output$DNAtext <- renderText({
+		
+		if(is.null(fasta()) == F){
+			
+			f <- fasta()[[1]][1:length(fasta()[[1]])]
+			x <- paste(f, collapse = "")
+			dna <- DNAString(x)
+			dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+			paste(dnaBases)
+		}
+	})
+	
+	##generate a bar plot of the DNA sequences
     output$distPlot <- renderPlot({
-        if(is.null(fasta())){
-            return ()
-        }
-        f <- fasta()[[1]][1:length(fasta()[[1]])]
-        barplot(table(f))
+        if(is.null(fasta()) == F){
+           
+	        f <- fasta()[[1]][1:length(fasta()[[1]])]
+			x <- paste(f, collapse = "")
+			dna <- DNAString(x)
+			dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+			
+	        barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA Composition of each nucleotide" )
+		}
     })
+
+	##print RNA sequences
+	output$RNAtext <- renderText({
+			
+			if(is.null(fasta()) == F){
+				
+				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				x <- paste(f, collapse = "")
+				dna <- DNAString(x)
+				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+				rna <- RNAString(dna)
+				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
+				paste(rnaBases)
+			}
+		})
+	
+	##generate a bar plot of the RNA sequences
+	output$convertDNA_RNA <- renderPlot({
+			if(is.null(fasta()) == F){
+				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				x <- paste(f, collapse = "")
+				dna <- DNAString(x)
+				rna <- RNAString(dna)
+				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
+				barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA Composition of each nucleotide" )
+			}
+	})
 })
 
 # Run the application 
