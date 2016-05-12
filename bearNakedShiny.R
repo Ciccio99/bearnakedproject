@@ -40,9 +40,10 @@ ui <- shinyUI(fluidPage(
             fileInput("file", "Choose FASTA file", accept=c('.fasta')),
             selectInput("seqType", 
 					    label=h4("What is the sequence type of this file?"), 
-                        choices = list("DNA" = 1, 
+                        choices = list("Select Sequence Type" = 0,
+                                        "DNA" = 1, 
                                        "RNA" = 2, 
-                                       "Protein" = 3),),
+                                       "Protein" = 3)),
             uiOutput('seqSelectInput')
         ),
         
@@ -68,6 +69,8 @@ ui <- shinyUI(fluidPage(
 						plotOutput("plotRNA")
 				),
 				tabPanel("Protein Composition",
+                        helpText("Fun Tip:"),
+                        helpText('"X" Amino Acid = Ambiguous'),
 						plotOutput("plotProtein")
 				)
             )
@@ -76,10 +79,7 @@ ui <- shinyUI(fluidPage(
 ))
 
 # Define server logic required to draw a histogram
-server <- shinyServer(function(input, output) {
-	
-	check = 0
-	
+server <- shinyServer(function(input, output) {	
 	##read in FASTA file
     fasta <- reactive({
         inFile <- input$file
@@ -178,64 +178,97 @@ server <- shinyServer(function(input, output) {
 	
 	##generate a bar plot of the DNA, RNA, or protein sequences in the file
 	output$plotDNA <- renderPlot({
-		
-		if(is.null(fasta()) == F){
-			seqNum <- as.numeric(input$seqSelectNum)
-			if(input$seqType == 1){ ##DNA
+		if (is.null(fasta())) return ()
+
+		seqNum <- as.numeric(input$seqSelectNum)
+		if (input$seqType == 1) { ##DNA	
+	        f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+			x <- paste(f, collapse = "")
+			dna <- DNAString(x)
+			dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+			
+			total <- length(which(dnaBases == "T"))
+			if(total > 0){
 				
-		        f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-				x <- paste(f, collapse = "")
-				dna <- DNAString(x)
-				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
-				
-				total <- length(which(dnaBases == "T"))
-				if(total > 0){
-					
-		        	barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA composition of each nucleotide" )
-				}
+	        	barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA composition of each nucleotide" )
 			}
-		}
+		} else if (input$seqType == 2) { ##DNA    
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            rna <- RNAString(x)
+            dnaBases <- strsplit(as.character(DNAString(rna)), split = "")[[1]]
+            
+            total <- length(which(dnaBases == "T"))
+            if(total > 0){
+                
+                barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA composition of each nucleotide" )
+            }
+        }
 	})
 
 	output$plotRNA <- renderPlot({
-				
-		if(is.null(fasta()) == F){
-			seqNum <- as.numeric(input$seqSelectNum)
-			if(input$seqType == 2){ ##RNA
-			
-				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-				x <- paste(f, collapse = "")
-				rna <- RNAString(x)
-				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
-				
-				total <- length(which(rnaBases == "U"))
-				if(total > 0){
-					
-					barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
-				}
-			}
+		if (is.null(fasta())) return ()
+
+		seqNum <- as.numeric(input$seqSelectNum)
+        if (input$seqType == 1) {
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            dna <- DNAString(x)
+            rnaBases <- strsplit(as.character(RNAString(dna)), split = "")[[1]]
+            total <- length(which(rnaBases == "U"))
+            if (total > 0) {
+                barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
+            }
+        } else if (input$seqType == 2) { ##RNA
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            rna <- RNAString(x)
+            rnaBases <- strsplit(as.character(rna), split = "")[[1]]
+            total <- length(which(rnaBases == "U"))
+            total <- length(which(rnaBases == "U"))
+            if (total > 0) {
+                barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
+            }
 		}
 	})
 
 	output$plotProtein <- renderPlot({
-	
-		if(is.null(fasta()) == F){
-			seqNum <- as.numeric(input$seqSelectNum)
-			if(input$seqType == 3){ ##protein
-				
-				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-				x <- paste(f, collapse = "")
-				peptide <- AAString(x)
-				aa <- strsplit(as.character(peptide), split = "")[[1]]
-				
-				total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
-				if(total != length(aa)){ 
-					
-					barplot(table(aa), xlab = "Amino acids", ylab = "Number of amino acids",  main = "Peptide composition of each amino acid" )
-				}
+		if(is.null(fasta())) return ()
+
+		seqNum <- as.numeric(input$seqSelectNum)
+        if(input$seqType == 1){ ##protein   
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            peptide <- AAString(translate(DNAString(x),  if.fuzzy.codon="solve"))
+            aa <- strsplit(as.character(peptide), split = "")[[1]]
+            
+            total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
+            if(total != length(aa)){ 
+                barplot(table(aa), col="aquamarine2", xlab = "Amino acids", ylab = "Number of amino acids",  main = "Peptide composition of each amino acid" )
+            }
+        } else if(input$seqType == 2){ ##protein   
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            peptide <- AAString(translate(RNAString(x), if.fuzzy.codon="solve"))
+            aa <- strsplit(as.character(peptide), split = "")[[1]]
+            
+            total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
+            if(total != length(aa)){ 
+                barplot(table(aa), col="aquamarine2", xlab = "Amino acids", ylab = "Number of amino acids",  main = "Peptide composition of each amino acid" )
+            }
+        } else if(input$seqType == 3){ ##protein	
+			f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+			x <- paste(f, collapse = "")
+			peptide <- AAString(x)
+			aa <- strsplit(as.character(peptide), split = "")[[1]]
+			
+			total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
+			if(total != length(aa)){ 
+				barplot(table(aa), col="aquamarine2", xlab = "Amino acids", ylab = "Number of amino acids",  main = "Peptide composition of each amino acid" )
 			}
 		}
 	})
+
 #    output$plotMM <- renderPlot({
 #				
 #        if(is.null(fasta()) == F){
