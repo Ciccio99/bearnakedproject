@@ -38,16 +38,21 @@ ui <- shinyUI(fluidPage(
                         choices = list("DNA" = 1, 
                                        "RNA" = 2, 
                                        "Protein" = 3),),
-					   
             helpText("You may not select DNA or RNA if the fasta file
-                     contains a peptide sequence.")
+                     contains a peptide sequence."),
+            uiOutput('seqSelectInput')
         ),
         
         # Show a plot of the generated distribution
         mainPanel(
-            h4("To get started, choose a fasta file on the left."),
+            h4("To get started, choose a fasta file on the left"),
+            h5("File information:"),
             uiOutput("fileTab"),
-            uiOutput("sum"),
+            # h5("Fasta Summary:"),
+            # uiOutput("sum"),
+            h4("Sequence Name:"),
+            textOutput("seqName"),
+            h4("DNA/RNA Sequence:"),
 			uiOutput("seqText"),
             plotOutput("plotMM")
         )
@@ -56,14 +61,14 @@ ui <- shinyUI(fluidPage(
 
 # Define server logic required to draw a histogram
 server <- shinyServer(function(input, output) {
-	
 	##read in FASTA file
     fasta <- reactive({
         inFile <- input$file
         if(is.null(inFile)){
             return ()
         }
-        read.fasta(file = inFile$datapath)
+        #read.fasta(file = inFile$datapath)
+        readDNAStringSet(file=inFile$datapath, format="fasta")
     })
 
 	##check to see if anything is in the file -- do not think this is necessary?
@@ -74,22 +79,36 @@ server <- shinyServer(function(input, output) {
         input$file
     })
 	
-	##generates a summary of the file
-    output$sum <- renderTable({
-        if(is.null(fasta())){
-            return ()
-        }
-        summary(fasta())
+	# ##generates a summary of the file
+ #    output$sum <- renderTable({
+ #        if(is.null(fasta())){
+ #            return ()
+ #        }
+ #        summary(fasta()[1])
+ #    })
+
+    output$seqSelectInput <- renderUI({
+        seqNums <- 1:length(fasta())
+        selectInput("seqSelectNum", label=h5("Choose a sequence:"), choices=seqNums)
     })
 	
+    output$seqName <- renderText({
+        if (is.null(fasta()) || is.null(input$seqSelectNum)){
+            return ()
+        }
+        num <- as.numeric(input$seqSelectNum)
+        names(fasta()[num])
+    })
+    
+
 	##print DNA, RNA, or protein sequences
 	output$seqText <- renderText({
 		
 		if(is.null(fasta()) == F){
-			
+	        seqNum <- as.numeric(input$seqSelectNum)
 			if(input$seqType == 1){ ##DNA
 				
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				dna <- DNAString(x)
 				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
@@ -97,7 +116,7 @@ server <- shinyServer(function(input, output) {
 				
 			} else if(input$seqType == 2){ ##RNA
 				
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				dna <- DNAString(x)
 				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
@@ -115,10 +134,10 @@ server <- shinyServer(function(input, output) {
 	##generate a bar plot of the DNA, RNA, or protein sequences
     output$plotMM <- renderPlot({
         if(is.null(fasta()) == F){
-           
+            seqNum <- as.numeric(input$seqSelectNum)
 			if(input$seqType == 1){ ##DNA
 				
-		        f <- fasta()[[1]][1:length(fasta()[[1]])]
+		        f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				dna <- DNAString(x)
 				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
@@ -126,7 +145,7 @@ server <- shinyServer(function(input, output) {
 				
 			} else if(input$seqType == 2){ ##RNA
 				
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				dna <- DNAString(x)
 				rna <- RNAString(dna)
