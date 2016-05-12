@@ -31,35 +31,40 @@ library(Biostrings)
 # Define UI for application that draws a histogram
 ui <- shinyUI(fluidPage(
     # Application title
-    titlePanel("Welcome to FASTAcrobat!"),
+    titlePanel("FASTAcrobat"),
     
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
+            h3("Get started:"),
             fileInput("file", "Choose FASTA file", accept=c('.fasta')),
             selectInput("seqType", 
-					    label=h5("What is the sequence type of this file?"), 
+					    label=h4("What is the sequence type of this file?"), 
                         choices = list("DNA" = 1, 
                                        "RNA" = 2, 
                                        "Protein" = 3),),
-			
-		   selectInput("convert", 
-				   		label=h5("Sequence Conversion:"), 
-				   		choices = list("DNA" = 1, 
-						   			   "RNA" = 2, 
-						    	   	   "Protein" = 3),),
-					   
-            helpText("Tip:"),
-			helpText("You cannot convert a protein sequence to DNA or RNA.")
-			
+            uiOutput('seqSelectInput')
         ),
         
         # Show a plot of the generated distribution
         mainPanel(
-            h4("To get started, choose a fasta file on the left."),
-			uiOutput("seqText"),
-            plotOutput("plotMM"),
-			uiOutput("conversion")
+            h4("Sequence Name:"),
+            textOutput("seqName"),
+            hr(),
+            tabsetPanel(type="tabs",
+                tabPanel("DNA",
+                    p(textOutput("dnaSequence"))
+                ),
+                tabPanel("RNA",
+                    p(textOutput("rnaSequence"))
+                ),
+                tabPanel("Protein",
+                    p(textOutput("proteinSequence"))
+                ),
+                tabPanel("DNA Composition",
+                    plotOutput("plotMM")
+                )
+            )
         )
     )
 ))
@@ -88,6 +93,22 @@ server <- shinyServer(function(input, output) {
         }
         #readFASTA(file = inFile$datapath)
     })
+
+    # Instantiates sequence choices once the file is loaded
+    output$seqSelectInput <- renderUI({
+        if (is.null(fasta())) return ()
+
+        seqNums <- 1:length(fasta())
+        selectInput("seqSelectNum", label=h4("Choose a sequence:"), choices=seqNums)
+    })
+
+    # Sets name of the sequence
+    output$seqName <- renderText({
+        if (is.null(fasta()) || is.null(input$seqSelectNum)) return ()
+
+        num <- as.numeric(input$seqSelectNum)
+        names(fasta()[num])
+    })
 	
 	##generates a summary of the file
     output$sum <- renderDataTable({
@@ -103,13 +124,13 @@ server <- shinyServer(function(input, output) {
     })
 	
 	##print DNA, RNA, or protein sequences
-	output$seqText <- renderText({
-		
+	seqText <- renderText({
 		if(is.null(fasta()) == F){
-			
+			seqNum <- as.numeric(input$seqSelectNum)
+
 			if(input$seqType == 1){ ##DNA
 				
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				dna <- DNAString(x)
 				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
@@ -122,7 +143,7 @@ server <- shinyServer(function(input, output) {
 				
 			} else if(input$seqType == 2){ ##RNA
 				
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				rna <- RNAString(x)
 				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
@@ -135,7 +156,7 @@ server <- shinyServer(function(input, output) {
 				
 			} else if(input$seqType == 3){ ##protein
 			
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				peptide <- AAString(x)
 				aa <- strsplit(as.character(peptide), split = "")[[1]]
@@ -153,10 +174,10 @@ server <- shinyServer(function(input, output) {
     output$plotMM <- renderPlot({
 				
         if(is.null(fasta()) == F){
-			
+            seqNum <- as.numeric(input$seqSelectNum)
 			if(input$seqType == 1){ ##DNA
 				
-		        f <- fasta()[[1]][1:length(fasta()[[1]])]
+		        f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				dna <- DNAString(x)
 				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
@@ -169,7 +190,7 @@ server <- shinyServer(function(input, output) {
 				
 			} else if(input$seqType == 2){ ##RNA
 				
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				rna <- RNAString(x)
 				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
@@ -182,7 +203,7 @@ server <- shinyServer(function(input, output) {
 				
 			} else if(input$seqType == 3){ ##protein
 				
-				f <- fasta()[[1]][1:length(fasta()[[1]])]
+				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				peptide <- AAString(x)
 				aa <- strsplit(as.character(peptide), split = "")[[1]]
@@ -196,56 +217,53 @@ server <- shinyServer(function(input, output) {
 		}
     })
 
-	##converts the sequences in the following manner
-	##1) DNA to RNA
-	##2) DNA to Protein
-	##3) RNA to DNA
-	##4) RNA to Protein
-	output$conversion <- renderText({
-			
-		if(is.null(fasta()) == F){
-			
-			
-			##1) check to see if seq type and convert are not the same
-			##2) check to see if seq type is not protein
-			if((input$convert != input$seqType) & input$seqType != 3){
-				
-				##convert seqtype to user's choice
-				if((input$seqType == 2) & (input$convert == 1)){ ##convert RNA to DNA
-					
-					f <- fasta()[[1]][1:length(fasta()[[1]])]
-					x <- paste(f, collapse = "")
-					rna <- RNAString(x)
-					dna <- DNAString(rna)
-					paste("Converted DNA sequence: ", dna)
-				} else if((input$seqType == 2) & (input$convert == 3)){ ##convert RNA to protein
-				
-					f <- fasta()[[1]][1:length(fasta()[[1]])]
-					x <- paste(f, collapse = "")
-					rna <- RNAString(x)
-					peptide <- translate(rna)
-					paste("Converted protein sequence: ", peptide)	
-				} else if((input$seqType == 1) & (input$convert == 2)){ ##convert DNA to RNA
-					
-					f <- fasta()[[1]][1:length(fasta()[[1]])]
-					x <- paste(f, collapse = "")
-					dna <- DNAString(x)
-					rna <- RNAString(dna)
-					paste("Converted RNA sequence: ", rna)	
-				} else if((input$seqType == 1) & (input$convert == 3)){ ##convert DNA to protein
-					
-					f <- fasta()[[1]][1:length(fasta()[[1]])]
-					x <- paste(f, collapse = "")
-					dna <- DNAString(x)
-					peptide <- translate(dna)
-					paste("Converted protein sequence: ", peptide)
-				}
-			}
-		
-		}
-				
-	})
+    # Instantiates DNA sequence
+    output$dnaSequence <- renderText ({
+        if (is.null(fasta())) return()
+        seqNum <- as.numeric(input$seqSelectNum)
+        if (input$seqType == 2) {
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            rna <- RNAString(x)
+            strsplit(as.character(DNAString(rna)), split = "")[[1]]
+        } else if (input$seqType == 1) {
+            seqText()
+        }   
+    })
 
+    # Instantiates RNA sequence 
+    output$rnaSequence <- renderText ({
+        if (is.null(fasta())) return()
+        seqNum <- as.numeric(input$seqSelectNum)
+        if (input$seqType == 1) {
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            dna <- DNAString(x)
+            strsplit(as.character(RNAString(dna)), split = "")[[1]]
+        } else if (input$seqType == 2) {
+            seqText()
+        }   
+    })
+
+    # Converts DNA/RNA to protein and Instantiates it
+    output$proteinSequence <- renderText ({
+        if (is.null(fasta())) return()
+
+        seqNum <- as.numeric(input$seqSelectNum)
+        if (input$seqType == 1) {
+            #If DNA -> Protein
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            dna <- DNAString(x)
+            strsplit(as.character(translate(dna)), split = "")[[1]]
+        } else if (input$seqType == 2) {
+            # If RNA -> Protein
+            f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+            x <- paste(f, collapse = "")
+            rna <- RNAString(x)
+            strsplit(as.character(translate(rna)), split = "")[[1]]
+        }
+    })
 })
 
 # Run the application 
