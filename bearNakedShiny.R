@@ -32,6 +32,7 @@ ui <- shinyUI(fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
+            h3("Get started:"),
             fileInput("file", "Choose FASTA file", accept=c('.fasta')),
             selectInput("seqType", 
 					    label=h5("What is the sequence type of this file?"), 
@@ -45,7 +46,6 @@ ui <- shinyUI(fluidPage(
         
         # Show a plot of the generated distribution
         mainPanel(
-            h4("To get started, choose a fasta file on the left"),
             h5("File information:"),
             uiOutput("fileTab"),
             # h5("Fasta Summary:"),
