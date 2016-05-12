@@ -62,8 +62,14 @@ ui <- shinyUI(fluidPage(
                     p(textOutput("proteinSequence"))
                 ),
                 tabPanel("DNA Composition",
-                    plotOutput("plotMM")
-                )
+                    plotOutput("plotDNA")
+                ),
+				tabPanel("RNA Composition",
+						plotOutput("plotRNA")
+				),
+				tabPanel("Protein Composition",
+						plotOutput("plotProtein")
+				)
             )
         )
     )
@@ -171,10 +177,10 @@ server <- shinyServer(function(input, output) {
 	})
 	
 	##generate a bar plot of the DNA, RNA, or protein sequences in the file
-    output$plotMM <- renderPlot({
-				
-        if(is.null(fasta()) == F){
-            seqNum <- as.numeric(input$seqSelectNum)
+	output$plotDNA <- renderPlot({
+		
+		if(is.null(fasta()) == F){
+			seqNum <- as.numeric(input$seqSelectNum)
 			if(input$seqType == 1){ ##DNA
 				
 		        f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
@@ -187,9 +193,16 @@ server <- shinyServer(function(input, output) {
 					
 		        	barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA composition of each nucleotide" )
 				}
+			}
+		}
+	})
+
+	output$plotRNA <- renderPlot({
 				
-			} else if(input$seqType == 2){ ##RNA
-				
+		if(is.null(fasta()) == F){
+			seqNum <- as.numeric(input$seqSelectNum)
+			if(input$seqType == 2){ ##RNA
+			
 				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
 				rna <- RNAString(x)
@@ -200,8 +213,15 @@ server <- shinyServer(function(input, output) {
 					
 					barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
 				}
-				
-			} else if(input$seqType == 3){ ##protein
+			}
+		}
+	})
+
+	output$plotProtein <- renderPlot({
+	
+		if(is.null(fasta()) == F){
+			seqNum <- as.numeric(input$seqSelectNum)
+			if(input$seqType == 3){ ##protein
 				
 				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
 				x <- paste(f, collapse = "")
@@ -215,7 +235,52 @@ server <- shinyServer(function(input, output) {
 				}
 			}
 		}
-    })
+	})
+#    output$plotMM <- renderPlot({
+#				
+#        if(is.null(fasta()) == F){
+#            seqNum <- as.numeric(input$seqSelectNum)
+#			if(input$seqType == 1){ ##DNA
+#				
+#		        f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+#				x <- paste(f, collapse = "")
+#				dna <- DNAString(x)
+#				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+#				
+#				total <- length(which(dnaBases == "T"))
+#				if(total > 0){
+#					
+#		        	barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA composition of each nucleotide" )
+#				}
+#				
+#			} else if(input$seqType == 2){ ##RNA
+#				
+#				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+#				x <- paste(f, collapse = "")
+#				rna <- RNAString(x)
+#				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
+#				
+#				total <- length(which(rnaBases == "U"))
+#				if(total > 0){
+#					
+#					barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
+#				}
+#				
+#			} else if(input$seqType == 3){ ##protein
+#				
+#				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+#				x <- paste(f, collapse = "")
+#				peptide <- AAString(x)
+#				aa <- strsplit(as.character(peptide), split = "")[[1]]
+#				
+#				total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
+#				if(total != length(aa)){ 
+#					
+#					barplot(table(aa), xlab = "Amino acids", ylab = "Number of amino acids",  main = "Peptide composition of each amino acid" )
+#				}
+#			}
+#		}
+#    })
 
     # Instantiates DNA sequence
     output$dnaSequence <- renderText ({
@@ -262,7 +327,9 @@ server <- shinyServer(function(input, output) {
             x <- paste(f, collapse = "")
             rna <- RNAString(x)
             strsplit(as.character(translate(rna)), split = "")[[1]]
-        }
+        } else if(input$seqType == 3){
+			seqText()
+		}
     })
 })
 
