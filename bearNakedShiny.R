@@ -64,15 +64,20 @@ ui <- shinyUI(fluidPage(
                     p(textOutput("proteinSequence"))
                 ),
                 tabPanel("DNA Composition",
+					helpText("Fun Tip:"),
+					helpText('"N" Nucleotide = Ambiguous'),
                     plotOutput("plotDNA")
                 ),
 				tabPanel("RNA Composition",
-						plotOutput("plotRNA")
+					helpText("Fun Tip:"),
+					helpText('"N" Nucleotide = Ambiguous'),
+					plotOutput("plotRNA")
 				),
 				tabPanel("Protein Composition",
-                        helpText("Fun Tip:"),
-                        helpText('"X" Amino Acid = Ambiguous'),
-						plotOutput("plotProtein")
+                    helpText("Fun Tip:"),
+                    helpText('"X" Amino Acid = Ambiguous'),
+					helpText('"*" Amino Acid = Non-ambiguous'),
+					plotOutput("plotProtein")
 				)
             )
         )
@@ -230,7 +235,6 @@ server <- shinyServer(function(input, output) {
             x <- paste(f, collapse = "")
             rna <- RNAString(x)
             rnaBases <- strsplit(as.character(rna), split = "")[[1]]
-            total <- length(which(rnaBases == "U"))
             total <- length(which(rnaBases == "U"))
             if (total > 0) {
                 barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
