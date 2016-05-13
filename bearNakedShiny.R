@@ -47,10 +47,11 @@ ui <- shinyUI(fluidPage(
             uiOutput('seqSelectInput')
         ),
         
-        # Show a plot of the generated distribution
+        # Main Panel
         mainPanel(
             h4("Sequence Name:"),
             textOutput("seqName"),
+            br(),
             hr(),
             tabsetPanel(type="tabs",
                 tabPanel("DNA",
@@ -80,25 +81,81 @@ ui <- shinyUI(fluidPage(
 
 # Define server logic required to draw a histogram
 server <- shinyServer(function(input, output) {	
-	##read in FASTA file
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Variable Instantiating Functions
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	# Read in inputed fasta file and set it to fasta variable
     fasta <- reactive({
         inFile <- input$file
-        if(is.null(inFile) == F){
-            
-			if(input$seqType == 1){ ##DNA fasta file
-				
-				readDNAStringSet(inFile$name)
-				
-			} else if(input$seqType == 2){ ##RNA fasta file
-				
-				readRNAStringSet(inFile$name)
-			} else if(input$seqType == 3){ ##Protein fasta file
-				
-				readAAStringSet(inFile$name)
-			}
-        }
-        #readFASTA(file = inFile$datapath)
+        if(is.null(inFile)) return ()
+
+		if(input$seqType == 1){ ##DNA fasta file
+			
+			readDNAStringSet(inFile$name)
+			
+		} else if(input$seqType == 2){ ##RNA fasta file
+			
+			readRNAStringSet(inFile$name)
+		} else if(input$seqType == 3){ ##Protein fasta file
+			
+			readAAStringSet(inFile$name)
+		}
     })
+
+    # Using the fasta file to read in the given sequence 
+    # The read in sequence is dependent on the sequence number
+    # chosen in the selector
+    seqText <- renderText({
+        if(is.null(fasta()) == F){
+            seqNum <- as.numeric(input$seqSelectNum)
+
+            if(input$seqType == 1){ ##DNA
+                
+                f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+                x <- paste(f, collapse = "")
+                dna <- DNAString(x)
+                dnaBases <- strsplit(as.character(dna), split = "")[[1]]
+                
+                total <- length(which(dnaBases == "T"))
+                if(total > 0){
+                    
+                    paste(dnaBases)
+                }
+                
+            } else if(input$seqType == 2){ ##RNA
+                
+                f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+                x <- paste(f, collapse = "")
+                rna <- RNAString(x)
+                rnaBases <- strsplit(as.character(rna), split = "")[[1]]
+                
+                total <- length(which(rnaBases == "U"))
+                if(total > 0){
+                    
+                    paste(rnaBases)
+                }
+                
+            } else if(input$seqType == 3){ ##protein
+            
+                f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
+                x <- paste(f, collapse = "")
+                peptide <- AAString(x)
+                aa <- strsplit(as.character(peptide), split = "")[[1]]
+                
+                total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
+                if(total != length(aa)){ 
+                    
+                    paste(aa)
+                }
+            }
+        }
+    })
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # UI Element Rendering Functions
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Instantiates sequence choices once the file is loaded
     output$seqSelectInput <- renderUI({
@@ -108,6 +165,10 @@ server <- shinyServer(function(input, output) {
         selectInput("seqSelectNum", label=h4("Choose a sequence:"), choices=seqNums)
     })
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # General Sequence Info Functions
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     # Sets name of the sequence
     output$seqName <- renderText({
         if (is.null(fasta()) || is.null(input$seqSelectNum)) return ()
@@ -115,68 +176,12 @@ server <- shinyServer(function(input, output) {
         num <- as.numeric(input$seqSelectNum)
         names(fasta()[num])
     })
-	
-	##generates a summary of the file
-    output$sum <- renderDataTable({
-        if(is.null(fasta()) == F){
-			seqName <- names(fasta())
-			start <- 1
-			end <- length(fasta()[[1]])
-			nAAs <- suppressWarnings(length(translate(fasta()[[1]])))
-			
-			df <-data.frame("seqName" = seqName, "start" = start, "end" = end, "nBases" = end, "Num of AAs" = nAAs)
-			
-        }
-    })
-	
-	##print DNA, RNA, or protein sequences
-	seqText <- renderText({
-		if(is.null(fasta()) == F){
-			seqNum <- as.numeric(input$seqSelectNum)
 
-			if(input$seqType == 1){ ##DNA
-				
-				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-				x <- paste(f, collapse = "")
-				dna <- DNAString(x)
-				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
-				
-				total <- length(which(dnaBases == "T"))
-				if(total > 0){
-					
-					paste(dnaBases)
-				}
-				
-			} else if(input$seqType == 2){ ##RNA
-				
-				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-				x <- paste(f, collapse = "")
-				rna <- RNAString(x)
-				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
-				
-				total <- length(which(rnaBases == "U"))
-				if(total > 0){
-					
-					paste(rnaBases)
-				}
-				
-			} else if(input$seqType == 3){ ##protein
-			
-				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-				x <- paste(f, collapse = "")
-				peptide <- AAString(x)
-				aa <- strsplit(as.character(peptide), split = "")[[1]]
-				
-				total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
-				if(total != length(aa)){ 
-					
-					paste(aa)
-				}
-			}
-		}
-	})
-	
-	##generate a bar plot of the DNA, RNA, or protein sequences in the file
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Sequence Composition Plotting Functions
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	##generate a bar plot of the DNA
 	output$plotDNA <- renderPlot({
 		if (is.null(fasta())) return ()
 
@@ -206,6 +211,7 @@ server <- shinyServer(function(input, output) {
         }
 	})
 
+    # Generate plot for RNA Composition
 	output$plotRNA <- renderPlot({
 		if (is.null(fasta())) return ()
 
@@ -232,6 +238,7 @@ server <- shinyServer(function(input, output) {
 		}
 	})
 
+    # Generate plot for Protein composition
 	output$plotProtein <- renderPlot({
 		if(is.null(fasta())) return ()
 
@@ -269,51 +276,9 @@ server <- shinyServer(function(input, output) {
 		}
 	})
 
-#    output$plotMM <- renderPlot({
-#				
-#        if(is.null(fasta()) == F){
-#            seqNum <- as.numeric(input$seqSelectNum)
-#			if(input$seqType == 1){ ##DNA
-#				
-#		        f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-#				x <- paste(f, collapse = "")
-#				dna <- DNAString(x)
-#				dnaBases <- strsplit(as.character(dna), split = "")[[1]]
-#				
-#				total <- length(which(dnaBases == "T"))
-#				if(total > 0){
-#					
-#		        	barplot(table(dnaBases), xlab = "Base", ylab = "Number of bases",  main = "DNA composition of each nucleotide" )
-#				}
-#				
-#			} else if(input$seqType == 2){ ##RNA
-#				
-#				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-#				x <- paste(f, collapse = "")
-#				rna <- RNAString(x)
-#				rnaBases <- strsplit(as.character(rna), split = "")[[1]]
-#				
-#				total <- length(which(rnaBases == "U"))
-#				if(total > 0){
-#					
-#					barplot(table(rnaBases), xlab = "Base", ylab = "Number of bases",  main = "RNA composition of each nucleotide" )
-#				}
-#				
-#			} else if(input$seqType == 3){ ##protein
-#				
-#				f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
-#				x <- paste(f, collapse = "")
-#				peptide <- AAString(x)
-#				aa <- strsplit(as.character(peptide), split = "")[[1]]
-#				
-#				total <- length(which(aa == "A")) + length(which(aa == "T")) + length(which(aa == "G")) + length(which(aa == "C")) + length(which(aa == "U"))
-#				if(total != length(aa)){ 
-#					
-#					barplot(table(aa), xlab = "Amino acids", ylab = "Number of amino acids",  main = "Peptide composition of each amino acid" )
-#				}
-#			}
-#		}
-#    })
+    # ~~~~~~~~~~~~~~~~~~~~~~~
+    # Sequence Text Functions
+    # ~~~~~~~~~~~~~~~~~~~~~~~
 
     # Instantiates DNA sequence
     output$dnaSequence <- renderText ({
