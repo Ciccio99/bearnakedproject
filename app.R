@@ -1,11 +1,17 @@
+# FASTAcrobat v0.1
 #
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
+# FASTAcrobat is a web application tool for to breakdown sequence data and display information about the sequence
+# and extract DNA, RNA and protein data.
 #
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
+# author: Olu Coker
+# author: Alberto Scicali
+# author: K. Jeselle Clark
+# author: Chris Snyder
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Load necessary packages
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 if(require("shiny") == FALSE){
 	
@@ -28,7 +34,10 @@ library(shiny)
 library(Biobase)
 library(Biostrings)
 
-# Define UI for application that draws a histogram
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User Interface functionality and templating
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ui <- shinyUI(fluidPage(
     # Application title
     titlePanel("FASTAcrobat"),
@@ -84,14 +93,17 @@ ui <- shinyUI(fluidPage(
     )
 ))
 
-# Define server logic required to draw a histogram
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Server Logic is defined here
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 server <- shinyServer(function(input, output) {	
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Variable Instantiating Functions
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	# Read in inputed fasta file and set it to fasta variable
+	# Read in input fasta file and set it to fasta variable
+    # This is the fasta file used by most of the functions 
     fasta <- reactive({
         inFile <- input$file
         if(is.null(inFile)) return ()
@@ -116,8 +128,7 @@ server <- shinyServer(function(input, output) {
         if(is.null(fasta()) == F){
             seqNum <- as.numeric(input$seqSelectNum)
 
-            if(input$seqType == 1){ ##DNA
-                
+            if(input$seqType == 1){ ## DNA
                 f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
                 x <- paste(f, collapse = "")
                 dna <- DNAString(x)
@@ -129,7 +140,7 @@ server <- shinyServer(function(input, output) {
                     paste(dnaBases)
                 }
                 
-            } else if(input$seqType == 2){ ##RNA
+            } else if(input$seqType == 2){ ## RNA
                 
                 f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
                 x <- paste(f, collapse = "")
@@ -142,7 +153,7 @@ server <- shinyServer(function(input, output) {
                     paste(rnaBases)
                 }
                 
-            } else if(input$seqType == 3){ ##protein
+            } else if(input$seqType == 3){ ## Protein
             
                 f <- fasta()[[seqNum]][1:length(fasta()[[seqNum]])]
                 x <- paste(f, collapse = "")
@@ -162,7 +173,7 @@ server <- shinyServer(function(input, output) {
     # UI Element Rendering Functions
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    # Instantiates sequence choices once the file is loaded
+    # Instantiate sequence choices once the file is loaded
     output$seqSelectInput <- renderUI({
         if (is.null(fasta())) return ()
 
@@ -186,7 +197,7 @@ server <- shinyServer(function(input, output) {
     # Sequence Composition Plotting Functions
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	##generate a bar plot of the DNA
+	## Generate a bar plot of the DNA
 	output$plotDNA <- renderPlot({
 		if (is.null(fasta())) return ()
 
